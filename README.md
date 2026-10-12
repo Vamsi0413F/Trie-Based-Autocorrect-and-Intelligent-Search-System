@@ -2,9 +2,6 @@
 
 A high-performance dictionary search and spelling correction engine implemented in Java SE from first principles.
 
-> **Zero Java Collections Framework Guarantee:**  
-> This project contains **no imports or usage** of built-in Java collection classes (`java.util.ArrayList`, `java.util.LinkedList`, `java.util.Queue`, `java.util.HashMap`, `java.util.HashSet`, `java.util.PriorityQueue`, `java.util.Collections`, `java.util.Arrays.sort`).  
-> All dynamic arrays (`CustomList`), FIFO queues (`CustomQueue`), multi-way prefix trees (`TrieNode` / `Trie`), and sorting algorithms (`CandidateSorter` MergeSort) are written from scratch.
 
 ---
 
