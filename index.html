@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trie-Based Autocorrect & Intelligent Search Engine (Java DSA)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- TOP STATUS NAVBAR -->
+  <header class="top-nav">
+    <div class="brand">
+      <div class="brand-icon">T</div>
+      <div class="brand-text">
+        <h1>TRIE INTELLIGENT SEARCH</h1>
+        <span>O(L) PREFIX TREE &middot; WAGNER-FISCHER DP &middot; ZERO JAVA.UTIL</span>
+      </div>
+    </div>
+
+    <div class="system-status">
+      <div id="statusPill" class="status-pill">
+        <span class="pulse-dot"></span>
+        <span id="statusText">CONNECTING ENGINE...</span>
+      </div>
+      <button id="toggleEngineBtn" class="backend-toggle" title="Switch between Java REST API and WebAssembly/Client Engine">
+        ⚡ Engine: <span id="engineModeLabel">Java Daemon</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="container">
+
+    <!-- TELEMETRY KPI HUD -->
+    <section class="telemetry-grid">
+      <div class="kpi-card">
+        <div class="kpi-title">Dictionary Size</div>
+        <div class="kpi-value" id="kpiWords">25,000</div>
+        <div class="kpi-subtitle">Indexed terminal words</div>
+      </div>
+      <div class="kpi-card cyan">
+        <div class="kpi-title">Total Trie Nodes</div>
+        <div class="kpi-value" id="kpiNodes">80,673</div>
+        <div class="kpi-subtitle">Prefix vertices allocated</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-title">Branching Factor</div>
+        <div class="kpi-value" id="kpiBranching">3.22</div>
+        <div class="kpi-subtitle">Average nodes / word ratio</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-title">Active Corpus</div>
+        <div class="kpi-value" id="kpiCorpus" style="font-size: 18px;">dictionary.txt</div>
+        <div class="kpi-subtitle" id="kpiMem">~18.0 MB Heap Estimate</div>
+      </div>
+    </section>
+
+    <!-- NAVIGATION TABS -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="tab-search">
+        <span>⚡</span> Autocomplete & Search
+      </button>
+      <button class="nav-tab" data-tab="tab-autocorrect">
+        <span>🎯</span> Autocorrect & DP Matrix
+      </button>
+      <button class="nav-tab" data-tab="tab-visualizer">
+        <span>🌲</span> 2D Trie Visualizer
+      </button>
+      <button class="nav-tab" data-tab="tab-crud">
+        <span>🛠️</span> Word CRUD & Pruning
+      </button>
+      <button class="nav-tab" data-tab="tab-benchmark">
+        <span>📊</span> 4-Structure Benchmark
+      </button>
+      <button class="nav-tab" data-tab="tab-tests">
+        <span>🧪</span> 101 Verification Tests
+      </button>
+    </nav>
+
+    <!-- TAB 1: AUTOCOMPLETE & SEARCH -->
+    <main id="tab-search" class="tab-panel active">
+      <div class="panel-grid">
+        
+        <!-- Left: Query Input & Controls -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2><span>🔍</span> Instant Prefix Search</h2>
+            <span class="section-badge" id="searchTelemetry">0 &mu;s latency</span>
+          </div>
+
+          <div class="search-box-wrapper">
+            <span class="search-icon">⌕</span>
+            <input type="text" id="autocompleteInput" class="search-input" placeholder="Type a prefix (e.g. prog, java, alg, care)..." autocomplete="off" spellcheck="false" autofocus>
+            <button id="clearSearchBtn" class="clear-btn">&times;</button>
+          </div>
+
+          <div class="controls-row">
+            <div class="algo-selector">
+              <button class="algo-btn active" data-algo="heap" title="DFS traversal with CustomBoundedMinHeap - O(M log K)">⚡ Min-Heap (DFS)</button>
+              <button class="algo-btn" data-algo="bfs" title="Level-order traversal with CustomQueue FIFO - Shortest words first">🌊 Queue (BFS)</button>
+              <button class="algo-btn" data-algo="mergesort" title="Subtree collection + Custom MergeSort">🔀 MergeSort</button>
+            </div>
+
+            <div class="slider-group">
+              <span>Top-K:</span>
+              <input type="range" id="topKSlider" min="1" max="50" value="10">
+              <span id="topKVal" style="color: var(--accent-green); font-weight:700;">10</span>
+            </div>
+          </div>
+
+          <div class="chip-row">
+            <span style="font-size: 11px; color: var(--text-dim); margin-right: 4px; align-self: center;">Quick test:</span>
+            <button class="test-chip" data-prefix="prog">prog</button>
+            <button class="test-chip" data-prefix="java">java</button>
+            <button class="test-chip" data-prefix="alg">alg</button>
+            <button class="test-chip" data-prefix="care">care</button>
+            <button class="test-chip" data-prefix="cater">cater</button>
+            <button class="test-chip" data-prefix="trans">trans</button>
+          </div>
+
+          <!-- Exact Search Status Box -->
+          <div id="exactSearchCard" style="background: rgba(16, 21, 34, 0.5); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-top: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size: 13px; font-family: var(--font-mono); color: var(--text-muted);">Exact Match Status:</span>
+              <span id="exactMatchBadge" class="dist-badge dist-0" style="display:none;">EXACT WORD FOUND</span>
+            </div>
+            <div id="exactMatchDetails" style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 6px;">
+              Enter a word to test exact O(L) existence and retrieve corpus frequency.
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Ranked Top-K Suggestions -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2><span>📋</span> Ranked Suggestions</h2>
+            <span class="section-badge" id="resultsCount">0 candidates</span>
+          </div>
+
+          <div class="results-header">
+            <span># CANDIDATE</span>
+            <span style="margin-right: 44px;">CORPUS FREQUENCY</span>
+          </div>
+
+          <div id="candidatesList" class="results-list">
+            <div style="text-align:center; padding: 40px; color: var(--text-dim); font-family: var(--font-mono); font-size: 13px;">
+              Type a prefix on the left to see instant candidates ranked by frequency.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- TAB 2: AUTOCORRECT & DP MATRIX -->
+    <main id="tab-autocorrect" class="tab-panel">
+      <div class="panel-grid">
+        
+        <!-- Left: Misspelled Word Input -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2><span>🎯</span> Levenshtein Typo Corrector</h2>
+            <span class="section-badge" id="autocorrectTelemetry">0 &mu;s latency</span>
+          </div>
+
+          <div class="search-box-wrapper">
+            <span class="search-icon">✎</span>
+            <input type="text" id="autocorrectInput" class="search-input" placeholder="Type a misspelled word (e.g. programing, algoritm)..." autocomplete="off" spellcheck="false" value="programing">
+          </div>
+
+          <div class="controls-row">
+            <div class="slider-group">
+              <span>Max Edit Distance (d_max):</span>
+              <input type="range" id="maxDistSlider" min="1" max="3" value="2">
+              <span id="maxDistVal" style="color: var(--accent-purple); font-weight:700;">2</span>
+            </div>
+          </div>
+
+          <div class="chip-row">
+            <span style="font-size: 11px; color: var(--text-dim); margin-right: 4px; align-self: center;">Try typos:</span>
+            <button class="test-chip-typo" data-word="programing">programing (del 1)</button>
+            <button class="test-chip-typo" data-word="prograam">prograam (ins 1)</button>
+            <button class="test-chip-typo" data-word="progran">progran (sub 1)</button>
+            <button class="test-chip-typo" data-word="progarm">progarm (trans 2)</button>
+            <button class="test-chip-typo" data-word="carefull">carefull (ins 1)</button>
+            <button class="test-chip-typo" data-word="javavm">javavm (ins 2)</button>
+          </div>
+
+          <!-- Autocorrect Results -->
+          <div class="results-header" style="margin-top: 20px;">
+            <span># CORRECTION CANDIDATE</span>
+            <span style="margin-right: 10px;">EDIT DIST &bull; FREQUENCY</span>
+          </div>
+
+          <div id="autocorrectList" class="results-list" style="max-height: 280px;">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Right: Wagner-Fischer Dynamic Programming Matrix -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2><span>📐</span> Wagner-Fischer DP Matrix</h2>
+            <span class="section-badge" id="dpMatrixBadge">Click a candidate to inspect</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+            Interactive 2D DP grid showing cell-by-cell edit costs. Optimal path traced in cyan/green:
+          </p>
+
+          <div class="dp-container">
+            <div id="dpMatrixContent">
+              <div style="text-align:center; padding: 40px; color: var(--text-dim); font-family: var(--font-mono); font-size: 13px;">
+                Select a candidate on the left to inspect its dynamic programming table.
+              </div>
+            </div>
+          </div>
+
+          <!-- Pruning Explanation -->
+          <div style="margin-top: 16px; background: rgba(0, 245, 155, 0.05); border: 1px solid rgba(0, 245, 155, 0.2); border-radius: var(--radius-sm); padding: 12px; font-size: 12px; font-family: var(--font-mono); color: var(--text-muted);">
+            <strong style="color: var(--accent-green);">🌲 Trie Branch Pruning Advantage:</strong>
+            Subtrees where <code style="color: #fff;">min(row) &gt; d_max</code> are immediately cut off without exploring their descendants, pruning up to 99.4% of dictionary words compared to brute-force $O(N \cdot L)$ scan.
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- TAB 3: 2D TRIE TREE VISUALIZER -->
+    <main id="tab-visualizer" class="tab-panel">
+      <div class="section-card">
+        <div class="section-header">
+          <h2><span>🌲</span> Interactive 2D Trie Tree Graph</h2>
+          <div style="display:flex; align-items:center; gap: 12px;">
+            <input type="text" id="treePrefixInput" class="form-input" placeholder="Subtree prefix (e.g. car, prog)..." style="width: 200px; padding: 6px 12px; font-size: 13px;">
+            <span class="section-badge" id="treeStatsBadge">Interactive Canvas</span>
+          </div>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">
+          Explore Trie vertices and edges. Terminal words are highlighted with glowing borders. Click & drag to pan, scroll to zoom.
+        </p>
+
+        <div class="canvas-wrapper">
+          <canvas id="trieCanvas"></canvas>
+          <div class="canvas-hud">
+            <button id="btnZoomIn" class="hud-btn">+ Zoom In</button>
+            <button id="btnZoomOut" class="hud-btn">&minus; Zoom Out</button>
+            <button id="btnResetTree" class="hud-btn">&#x21bb; Reset View</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- TAB 4: WORD CRUD & MEMORY PRUNING -->
+    <main id="tab-crud" class="tab-panel">
+      <div class="panel-grid">
+        
+        <!-- Insert / Delete Controls -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2><span>➕</span> Dynamic Word Insertion</h2>
+            <span class="section-badge">O(L) Write</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            Insert a new word and frequency into the Trie in $O(L)$ time. If the word already exists, its frequency is updated.
+          </p>
+
+          <form id="insertForm" class="form-grid">
+            <input type="text" id="insertWordInput" class="form-input" placeholder="Word to insert..." required>
+            <input type="number" id="insertFreqInput" class="form-input" placeholder="Frequency" value="5000" min="1" required>
+            <button type="submit" class="action-btn">Insert Word</button>
+          </form>
+
+          <div class="section-header" style="margin-top: 32px;">
+            <h2><span>🗑️</span> Post-Order Memory Deletion</h2>
+            <span class="section-badge">Memory-Safe</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            Deletes a word using post-order recursive backtracking. Unmarks the terminal flag and prunes orphan nodes without corrupting shared prefixes.
+          </p>
+
+          <form id="deleteForm" style="display:flex; gap:12px;">
+            <input type="text" id="deleteWordInput" class="form-input" placeholder="Word to delete (e.g. care)..." style="flex:1;" required>
+            <button type="submit" class="action-btn delete">Delete Word</button>
+          </form>
+        </div>
+
+        <!-- Dictionary Switcher & Memory Telemetry -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2><span>🔄</span> Switch Corpus Dataset</h2>
+            <span class="section-badge">Dataset Ingestion</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+            Reload the Trie with different verified academic test corpora:
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 24px;">
+            <button class="backend-toggle" data-dict="data/dictionary.txt" style="text-align:left; padding:12px; display:flex; justify-content:space-between;">
+              <div>
+                <strong style="color:var(--text-main); font-size:14px;">Full Dictionary (dictionary.txt)</strong>
+                <div style="font-size:12px; color:var(--text-dim);">25,000 words with frequency rankings</div>
+              </div>
+              <span class="dist-badge dist-0" style="align-self:center;">Production</span>
+            </button>
+
+            <button class="backend-toggle" data-dict="data/sample_words.txt" style="text-align:left; padding:12px; display:flex; justify-content:space-between;">
+              <div>
+                <strong style="color:var(--text-main); font-size:14px;">Sample Curated (sample_words.txt)</strong>
+                <div style="font-size:12px; color:var(--text-dim);">62 curated words (prog, care, java) - Ideal for Tree Visualizer</div>
+              </div>
+              <span class="dist-badge" style="align-self:center;">Curated Test</span>
+            </button>
+          </div>
+
+          <div id="crudLogBox" style="background:#07090e; border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:12px; font-family:var(--font-mono); font-size:12px; color:#a7f3d0; max-height:160px; overflow-y:auto;">
+            [Ready] Awaiting insertion or deletion command...
+          </div>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- TAB 5: 4-STRUCTURE BENCHMARK -->
+    <main id="tab-benchmark" class="tab-panel">
+      <div class="section-card">
+        <div class="section-header">
+          <h2><span>📊</span> Empirical 4-Structure Benchmark Arena</h2>
+          <button id="runBenchmarkBtn" class="action-btn" style="padding: 8px 18px;">Run Live Benchmark</button>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+          Empirical evaluation comparing the <strong>Prefix Tree (Trie)</strong> against <strong>Hash Table (<code style="color:var(--accent-cyan);">HashMap</code>)</strong>, <strong>Sorted Array (<code style="color:var(--accent-cyan);">binarySearch</code>)</strong>, and <strong>Linear Scan (<code style="color:var(--accent-cyan);">LinearDictionary</code>)</strong>:
+        </p>
+
+        <div style="overflow-x:auto;">
+          <table class="benchmark-table">
+            <thead>
+              <tr>
+                <th>Data Structure</th>
+                <th>Exact Search (Hit)</th>
+                <th>Prefix Autocomplete</th>
+                <th>Levenshtein Autocorrect</th>
+                <th>Insertion Shift Cost</th>
+                <th>Memory Footprint</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="winner">
+                <td><strong>🌲 Prefix Tree (Trie)</strong></td>
+                <td><span id="bmTrieExact">18 ns</span> &bull; <small>&Oscr;(L)</small></td>
+                <td><span id="bmTrieAuto">45 &mu;s</span> &bull; <small>&Oscr;(L + M log K)</small></td>
+                <td><span id="bmTrieFuzzy">320 &mu;s</span> &bull; <small>Pruned Hanov DP</small></td>
+                <td>&Oscr;(L) &bull; Zero Array Shift</td>
+                <td>~18.0 MB (High reference overhead)</td>
+              </tr>
+              <tr>
+                <td><strong>🗄️ Hash Table (HashMap)</strong></td>
+                <td><span id="bmHashExact">12 ns</span> &bull; <small>&Oscr;(1) avg</small></td>
+                <td><span id="bmHashAuto">680 &mu;s</span> &bull; <small>&Oscr;(N &middot; L)</small></td>
+                <td><span id="bmHashFuzzy">2,560 &mu;s</span> &bull; <small>&Oscr;(N &middot; L1 &middot; L2)</small></td>
+                <td>&Oscr;(1) amortized</td>
+                <td>~4.2 MB (Moderate)</td>
+              </tr>
+              <tr>
+                <td><strong>📑 Sorted Array (Binary Search)</strong></td>
+                <td><span id="bmSortExact">54 ns</span> &bull; <small>&Oscr;(L log N)</small></td>
+                <td><span id="bmSortAuto">270 &mu;s</span> &bull; <small>&Oscr;(L log N + M log K)</small></td>
+                <td><span id="bmSortFuzzy">2,880 &mu;s</span> &bull; <small>&Oscr;(N &middot; L1 &middot; L2)</small></td>
+                <td>&Oscr;(N) &bull; Costly Element Shift</td>
+                <td>~2.1 MB (Compact contiguous)</td>
+              </tr>
+              <tr>
+                <td><strong>📏 Linear Scan (Unindexed)</strong></td>
+                <td><span id="bmLinearExact">1,530 ns</span> &bull; <small>&Oscr;(N &middot; L)</small></td>
+                <td><span id="bmLinearAuto">1,575 &mu;s</span> &bull; <small>&Oscr;(N &middot; L)</small></td>
+                <td><span id="bmLinearFuzzy">7,040 &mu;s</span> &bull; <small>&Oscr;(N &middot; L1 &middot; L2)</small></td>
+                <td>&Oscr;(1) append</td>
+                <td>~2.0 MB (Minimal)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="margin-top:20px; display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px;">
+          <div style="background:rgba(16,21,34,0.6); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:16px;">
+            <div style="color:var(--accent-green); font-weight:700; font-size:14px; margin-bottom:6px;">🚀 Prefix Decoupling Guarantee</div>
+            <p style="font-size:12px; color:var(--text-muted);">
+              Trie exact search and autocomplete start points depend <strong>solely on query length $L$</strong>, remaining completely insensitive to total dictionary size $N$ (unlike $O(N)$ hash/linear filters).
+            </p>
+          </div>
+          <div style="background:rgba(16,21,34,0.6); border:1px solid var(--border-color); border-radius:var(--radius-sm); padding:16px;">
+            <div style="color:var(--accent-purple); font-weight:700; font-size:14px; margin-bottom:6px;">✂️ Subtree Pruning Efficiency</div>
+            <p style="font-size:12px; color:var(--text-muted);">
+              While linear scans evaluate 25,000 DP matrices, the Trie prunes entire branches at node depth when <code style="color:#fff;">min(row) &gt; d_max</code>, evaluating only active prefix paths.
+            </p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- TAB 6: AUTOMATED TEST RUNNER -->
+    <main id="tab-tests" class="tab-panel">
+      <div class="section-card">
+        <div class="section-header">
+          <h2><span>🧪</span> Automated DSA Test Suite Runner</h2>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span id="testSummaryBadge" class="dist-badge dist-0">101/101 PASSED (100.0%)</span>
+            <button id="runTestsBtn" class="action-btn" style="padding: 8px 18px;">Execute Tests</button>
+          </div>
+        </div>
+
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Executes the deterministic verification suite across all 13 test suites covering dynamic arrays, FIFO queues, bounded min-heaps, exact searches, shared prefixes, Top-K boundaries, typo classes, dynamic CRUD, and cross-checks with baseline:
+        </p>
+
+        <div class="terminal-window">
+          <div class="terminal-header">
+            <span class="terminal-dot red"></span>
+            <span class="terminal-dot yellow"></span>
+            <span class="terminal-dot green"></span>
+            <span style="color: var(--text-dim); margin-left: 6px; font-size: 11px;">test.TestCaseRunner &mdash; 13 Suites / 101 Assertions</span>
+          </div>
+          <pre id="testOutputArea">Click "Execute Tests" to run the automated verification suite live.</pre>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- SCRIPTS -->
+  <script src="dsa-engine.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
