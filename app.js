@@ -8,12 +8,12 @@ const state = {
   engineMode: 'java', // 'java' or 'client'
   apiBase: '',        // Relative if served by Java backend
   localTrie: null,
-  activeCorpus: 'dictionary.txt',
+  activeCorpus: 'words_alpha.txt',
   stats: {
-    words: 25000,
-    nodes: 80673,
-    branching: 3.22,
-    memory: '~18.0 MB'
+    words: 370105,
+    nodes: 1027810,
+    branching: 2.78,
+    memory: '~230.0 MB'
   },
   searchAlgo: 'heap',
   topK: 10,
@@ -98,7 +98,8 @@ async function initClientTrie() {
     showToast('Initializing in-browser Trie engine with dictionary...', 'info');
     state.localTrie = new Trie();
     try {
-      const resp = await fetch('data/dictionary.txt');
+      let resp = await fetch('data/words_alpha.txt');
+      if (!resp.ok) resp = await fetch('data/dictionary.txt');
       if (resp.ok) {
         const text = await resp.text();
         const lines = text.split('\n');
