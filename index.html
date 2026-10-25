@@ -84,7 +84,7 @@
     <main id="tab-search" class="tab-panel active">
       <div class="panel-grid">
         
-        <!-- Left: Query Input & Controls -->
+        <!-- Left: Query Input -->
         <div class="section-card">
           <div class="section-header">
             <h2><span>🔍</span> Instant Prefix Search</h2>
@@ -95,41 +95,6 @@
             <span class="search-icon">⌕</span>
             <input type="text" id="autocompleteInput" class="search-input" placeholder="Type a prefix (e.g. prog, java, alg, care)..." autocomplete="off" spellcheck="false" autofocus>
             <button id="clearSearchBtn" class="clear-btn">&times;</button>
-          </div>
-
-          <div class="controls-row">
-            <div class="algo-selector">
-              <button class="algo-btn active" data-algo="heap" title="DFS traversal with CustomBoundedMinHeap - O(M log K)">⚡ Min-Heap (DFS)</button>
-              <button class="algo-btn" data-algo="bfs" title="Level-order traversal with CustomQueue FIFO - Shortest words first">🌊 Queue (BFS)</button>
-              <button class="algo-btn" data-algo="mergesort" title="Subtree collection + Custom MergeSort">🔀 MergeSort</button>
-            </div>
-
-            <div class="slider-group">
-              <span>Top-K:</span>
-              <input type="range" id="topKSlider" min="1" max="50" value="10">
-              <span id="topKVal" style="color: var(--accent-green); font-weight:700;">10</span>
-            </div>
-          </div>
-
-          <div class="chip-row">
-            <span style="font-size: 11px; color: var(--text-dim); margin-right: 4px; align-self: center;">Quick test:</span>
-            <button class="test-chip" data-prefix="prog">prog</button>
-            <button class="test-chip" data-prefix="java">java</button>
-            <button class="test-chip" data-prefix="alg">alg</button>
-            <button class="test-chip" data-prefix="care">care</button>
-            <button class="test-chip" data-prefix="cater">cater</button>
-            <button class="test-chip" data-prefix="trans">trans</button>
-          </div>
-
-          <!-- Exact Search Status Box -->
-          <div id="exactSearchCard" style="background: rgba(16, 21, 34, 0.5); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: 14px; margin-top: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size: 13px; font-family: var(--font-mono); color: var(--text-muted);">Exact Match Status:</span>
-              <span id="exactMatchBadge" class="dist-badge dist-0" style="display:none;">EXACT WORD FOUND</span>
-            </div>
-            <div id="exactMatchDetails" style="font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); margin-top: 6px;">
-              Enter a word to test exact O(L) existence and retrieve corpus frequency.
-            </div>
           </div>
         </div>
 
@@ -155,11 +120,11 @@
       </div>
     </main>
 
-    <!-- TAB 2: AUTOCORRECT & DP MATRIX -->
+    <!-- TAB 2: AUTOCORRECT -->
     <main id="tab-autocorrect" class="tab-panel">
-      <div class="panel-grid">
+      <div style="max-width: 860px; margin: 0 auto;">
         
-        <!-- Left: Misspelled Word Input -->
+        <!-- Misspelled Word Input & Ranked Corrections -->
         <div class="section-card">
           <div class="section-header">
             <h2><span>🎯</span> Levenshtein Typo Corrector</h2>
@@ -195,34 +160,8 @@
             <span style="margin-right: 10px;">EDIT DIST &bull; FREQUENCY</span>
           </div>
 
-          <div id="autocorrectList" class="results-list" style="max-height: 280px;">
+          <div id="autocorrectList" class="results-list" style="max-height: 380px;">
             <!-- Populated dynamically -->
-          </div>
-        </div>
-
-        <!-- Right: Wagner-Fischer Dynamic Programming Matrix -->
-        <div class="section-card">
-          <div class="section-header">
-            <h2><span>📐</span> Wagner-Fischer DP Matrix</h2>
-            <span class="section-badge" id="dpMatrixBadge">Click a candidate to inspect</span>
-          </div>
-
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
-            Interactive 2D DP grid showing cell-by-cell edit costs. Optimal path traced in cyan/green:
-          </p>
-
-          <div class="dp-container">
-            <div id="dpMatrixContent">
-              <div style="text-align:center; padding: 40px; color: var(--text-dim); font-family: var(--font-mono); font-size: 13px;">
-                Select a candidate on the left to inspect its dynamic programming table.
-              </div>
-            </div>
-          </div>
-
-          <!-- Pruning Explanation -->
-          <div style="margin-top: 16px; background: rgba(0, 245, 155, 0.05); border: 1px solid rgba(0, 245, 155, 0.2); border-radius: var(--radius-sm); padding: 12px; font-size: 12px; font-family: var(--font-mono); color: var(--text-muted);">
-            <strong style="color: var(--accent-green);">🌲 Trie Branch Pruning Advantage:</strong>
-            Subtrees where <code style="color: #fff;">min(row) &gt; d_max</code> are immediately cut off without exploring their descendants, pruning up to 99.4% of dictionary words compared to brute-force $O(N \cdot L)$ scan.
           </div>
         </div>
 

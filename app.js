@@ -184,20 +184,24 @@ function setupEventListeners() {
     searchInput.focus();
   });
 
-  topKSlider.addEventListener('input', (e) => {
-    state.topK = parseInt(e.target.value, 10);
-    topKVal.textContent = state.topK;
-    triggerSearch(searchInput.value);
-  });
-
-  algoBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      algoBtns.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.searchAlgo = btn.dataset.algo;
+  if (topKSlider && topKVal) {
+    topKSlider.addEventListener('input', (e) => {
+      state.topK = parseInt(e.target.value, 10);
+      topKVal.textContent = state.topK;
       triggerSearch(searchInput.value);
     });
-  });
+  }
+
+  if (algoBtns && algoBtns.length > 0) {
+    algoBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        algoBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.searchAlgo = btn.dataset.algo;
+        triggerSearch(searchInput.value);
+      });
+    });
+  }
 
   // Quick chips
   document.querySelectorAll('.test-chip').forEach(chip => {
@@ -288,8 +292,8 @@ async function triggerSearch(prefix) {
   if (!clean) {
     candidatesList.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-dim); font-family: var(--font-mono); font-size: 13px;">Type a prefix on the left to see instant candidates ranked by frequency.</div>`;
     resultsCount.textContent = '0 candidates';
-    exactBadge.style.display = 'none';
-    exactDetails.textContent = 'Enter a word to test exact O(L) existence and retrieve corpus frequency.';
+    if (exactBadge) exactBadge.style.display = 'none';
+    if (exactDetails) exactDetails.textContent = 'Enter a word to test exact O(L) existence and retrieve corpus frequency.';
     return;
   }
 
@@ -330,20 +334,22 @@ async function triggerSearch(prefix) {
   telemetry.textContent = `${elapsedMicros} μs latency`;
   resultsCount.textContent = `${candidates.length} candidates`;
 
-  // Update Exact Search Card
-  if (exactFound) {
-    exactBadge.style.display = 'inline-block';
-    exactBadge.className = 'dist-badge dist-0';
-    exactBadge.textContent = 'EXACT WORD FOUND';
-    exactDetails.innerHTML = `Word <strong style="color:var(--accent-green);">"${clean}"</strong> is stored as terminal vertex with frequency <strong style="color:var(--accent-cyan);">${exactFreq.toLocaleString()}</strong>. Time complexity: <strong>O(L)</strong> where L = ${clean.length}.`;
-  } else {
-    exactBadge.style.display = 'inline-block';
-    exactBadge.className = 'dist-badge';
-    exactBadge.style.background = 'rgba(239, 68, 68, 0.15)';
-    exactBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
-    exactBadge.style.color = '#ef4444';
-    exactBadge.textContent = 'NOT IN DICTIONARY';
-    exactDetails.innerHTML = `No terminal flag on path for "${clean}". Suggestions below explore valid descendant leaves.`;
+  // Update Exact Search Card if present
+  if (exactBadge && exactDetails) {
+    if (exactFound) {
+      exactBadge.style.display = 'inline-block';
+      exactBadge.className = 'dist-badge dist-0';
+      exactBadge.textContent = 'EXACT WORD FOUND';
+      exactDetails.innerHTML = `Word <strong style="color:var(--accent-green);">"${clean}"</strong> is stored as terminal vertex with frequency <strong style="color:var(--accent-cyan);">${exactFreq.toLocaleString()}</strong>. Time complexity: <strong>O(L)</strong> where L = ${clean.length}.`;
+    } else {
+      exactBadge.style.display = 'inline-block';
+      exactBadge.className = 'dist-badge';
+      exactBadge.style.background = 'rgba(239, 68, 68, 0.15)';
+      exactBadge.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+      exactBadge.style.color = '#ef4444';
+      exactBadge.textContent = 'NOT IN DICTIONARY';
+      exactDetails.innerHTML = `No terminal flag on path for "${clean}". Suggestions below explore valid descendant leaves.`;
+    }
   }
 
   // Render Candidate Cards
@@ -449,7 +455,7 @@ async function triggerAutocorrect(word) {
   }
 
   list.innerHTML = candidates.map((c, idx) => `
-    <div class="candidate-card" onclick="selectCandidateForDP('${clean}', '${c.word}')">
+    <div class="candidate-card" onclick="inspectWord('${c.word}')">
       <div class="candidate-left">
         <span class="rank-badge">#${idx + 1}</span>
         <span class="word-highlight">${c.word}</span>
@@ -460,19 +466,18 @@ async function triggerAutocorrect(word) {
       </div>
     </div>
   `).join('');
-
-  // Auto-select the top candidate for DP table
-  selectCandidateForDP(clean, candidates[0].word);
 }
 
 window.selectCandidateForDP = function(query, target) {
-  document.getElementById('dpMatrixBadge').textContent = `DP("${query}" ➔ "${target}")`;
+  const badge = document.getElementById('dpMatrixBadge');
+  if (badge) badge.textContent = `DP("${query}" ➔ "${target}")`;
   const result = computeLevenshteinMatrix(query, target);
   renderDPMatrix(query, target, result);
 };
 
 function renderDPMatrix(s1, s2, { dp, ops, path, distance }) {
   const container = document.getElementById('dpMatrixContent');
+  if (!container) return;
   const pathSet = new Set(path.map(p => `${p.r},${p.c}`));
 
   let html = `<div style="margin-bottom:10px; font-family:var(--font-mono); font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between;">`;
