@@ -456,7 +456,7 @@ async function triggerAutocorrect(word) {
   }
 
   list.innerHTML = candidates.map((c, idx) => `
-    <div class="candidate-card" onclick="inspectWord('${c.word}')">
+    <div class="candidate-card" onclick="selectCandidateForDP('${clean}', '${c.word}')">
       <div class="candidate-left">
         <span class="rank-badge">#${idx + 1}</span>
         <span class="word-highlight">${c.word}</span>
@@ -467,6 +467,10 @@ async function triggerAutocorrect(word) {
       </div>
     </div>
   `).join('');
+
+  if (candidates.length > 0) {
+    selectCandidateForDP(clean, candidates[0].word);
+  }
 }
 
 window.selectCandidateForDP = function(query, target) {
